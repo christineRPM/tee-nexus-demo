@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import Web3 from 'web3';
+import 'dotenv/config';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Check Collection API Called ===');
+    
     const body = await request.json();
     const { userWallet } = body;
 
@@ -18,89 +17,123 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!ethers.utils.isAddress(userWallet)) {
+    if (!Web3.utils.isAddress(userWallet)) {
       return NextResponse.json(
         { error: 'Invalid wallet address provided' },
         { status: 400 }
       );
     }
 
-    // Execute the check-counts script
-    const command = `cd .. && npx hardhat run scripts/check-counts.ts`;
-    
-    console.log(`📊 Checking collection for: ${userWallet}`);
-    
-    const { stdout, stderr } = await execAsync(command);
-    
-    if (stderr) {
-      console.error('Script stderr:', stderr);
-    }
-
-    console.log('Script stdout:', stdout);
-
-    // Parse the output to extract user's collection
-    const lines = stdout.split('\n');
-    const result: {
-      success: boolean;
-      userWallet: string;
-      collection: {
-        sepolia: number;
-        arbitrumSepolia: number;
-        total: number;
-      };
-      globalStats: {
-        sepolia: { total: number; participants: number };
-        arbitrumSepolia: { total: number; participants: number };
-      };
-    } = {
-      success: true,
-      userWallet,
-      collection: {
-        sepolia: 0,
-        arbitrumSepolia: 0,
-        total: 0
+    // Contract ABI for the LogoHuntGame contract
+    const LOGO_HUNT_GAME_ABI = [
+      {
+        "inputs": [],
+        "name": "logosFound",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
       },
-      globalStats: {
-        sepolia: { total: 0, participants: 0 },
-        arbitrumSepolia: { total: 0, participants: 0 }
+      {
+        "inputs": [{"internalType": "address", "name": "_user", "type": "address"}],
+        "name": "personalCollection",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "uniqueParticipants",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
       }
-    };
+    ];
 
-    // Extract user's personal collection
-    for (const line of lines) {
-      if (line.includes('Your address') && line.includes(userWallet)) {
-        // Look for the next lines that show collection counts
-        const sepoliaMatch = lines.find(l => l.includes('Sepolia:') && l.includes('logos collected'));
-        const arbitrumMatch = lines.find(l => l.includes('Arbitrum Sepolia:') && l.includes('logos collected'));
-        const totalMatch = lines.find(l => l.includes('Total personal collection:') && l.includes('logos'));
+    try {
+      console.log('Setting up Web3 instances...');
+      
+      // Create Web3 instances
+      const sepoliaWeb3 = new Web3(process.env.SEPOLIA_RPC_URL!);
+      const arbitrumWeb3 = new Web3(process.env.ARBITRUM_SEPOLIA_RPC_URL!);
 
-        if (sepoliaMatch) {
-          result.collection.sepolia = parseInt(sepoliaMatch.match(/\d+/)?.[0] || '0');
-        }
-        if (arbitrumMatch) {
-          result.collection.arbitrumSepolia = parseInt(arbitrumMatch.match(/\d+/)?.[0] || '0');
-        }
-        if (totalMatch) {
-          result.collection.total = parseInt(totalMatch.match(/\d+/)?.[0] || '0');
-        }
-      }
+      console.log('Creating contracts...');
+      
+      // Create contracts
+      const sepoliaContract = new sepoliaWeb3.eth.Contract(
+        LOGO_HUNT_GAME_ABI, 
+        process.env.SEPOLIA_CONTRACT_ADDRESS!
+      );
+      
+      const arbitrumContract = new arbitrumWeb3.eth.Contract(
+        LOGO_HUNT_GAME_ABI, 
+        process.env.ARBITRUM_SEPOLIA_CONTRACT_ADDRESS!
+      );
 
-      // Extract global stats
-      if (line.includes('Sepolia:') && line.includes('logos found')) {
-        result.globalStats.sepolia.total = parseInt(line.match(/\d+/)?.[0] || '0');
-      }
-      if (line.includes('Unique participants:') && line.includes('Sepolia')) {
-        result.globalStats.sepolia.participants = parseInt(line.match(/\d+/)?.[0] || '0');
-      }
-      if (line.includes('Arbitrum Sepolia:') && line.includes('logos found')) {
-        result.globalStats.arbitrumSepolia.total = parseInt(line.match(/\d+/)?.[0] || '0');
-      }
-      if (line.includes('Unique participants:') && line.includes('Arbitrum Sepolia')) {
-        result.globalStats.arbitrumSepolia.participants = parseInt(line.match(/\d+/)?.[0] || '0');
-      }
+      console.log('Fetching data from contracts...');
+
+      // Get data from both chains with error handling
+      const [sepoliaPersonal, sepoliaTotal, sepoliaParticipants, arbitrumPersonal, arbitrumTotal, arbitrumParticipants] = await Promise.all([
+        (sepoliaContract.methods.personalCollection(userWallet).call() as Promise<string>).catch((e: any) => {
+          console.log('Sepolia personal collection error:', e.message);
+          return '0';
+        }),
+        (sepoliaContract.methods.logosFound().call() as Promise<string>).catch((e: any) => {
+          console.log('Sepolia logos found error:', e.message);
+          return '0';
+        }),
+        (sepoliaContract.methods.uniqueParticipants().call() as Promise<string>).catch((e: any) => {
+          console.log('Sepolia participants error:', e.message);
+          return '0';
+        }),
+        (arbitrumContract.methods.personalCollection(userWallet).call() as Promise<string>).catch((e: any) => {
+          console.log('Arbitrum personal collection error:', e.message);
+          return '0';
+        }),
+        (arbitrumContract.methods.logosFound().call() as Promise<string>).catch((e: any) => {
+          console.log('Arbitrum logos found error:', e.message);
+          return '0';
+        }),
+        (arbitrumContract.methods.uniqueParticipants().call() as Promise<string>).catch((e: any) => {
+          console.log('Arbitrum participants error:', e.message);
+          return '0';
+        })
+      ]);
+
+      const result = {
+        success: true,
+        userWallet,
+        collection: {
+          sepolia: parseInt(sepoliaPersonal),
+          arbitrumSepolia: parseInt(arbitrumPersonal),
+          total: parseInt(sepoliaPersonal) + parseInt(arbitrumPersonal)
+        },
+        globalStats: {
+          sepolia: { 
+            total: parseInt(sepoliaTotal), 
+            participants: parseInt(sepoliaParticipants) 
+          },
+          arbitrumSepolia: { 
+            total: parseInt(arbitrumTotal), 
+            participants: parseInt(arbitrumParticipants) 
+          }
+        }
+      };
+
+      console.log('Success:', result);
+      return NextResponse.json(result);
+
+    } catch (error) {
+      console.error('Failed to check collection:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to check collection',
+          details: error instanceof Error ? error.message : 'Unknown error',
+          userWallet
+        },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json(result);
 
   } catch (error) {
     console.error('Error checking collection:', error);
