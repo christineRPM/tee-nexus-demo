@@ -1,8 +1,15 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import { vars } from "hardhat/config";
+
+// Override typechain target to use ethers-v5
+import "@typechain/hardhat";
+import "@nomicfoundation/hardhat-ethers";
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
+  typechain: {
+    target: "ethers-v5",
+  },
   networks: {
     sepolia: {
       url: "https://eth-sepolia.g.alchemy.com/v2/fl94lXT-IxAhUmbp5fOua",
