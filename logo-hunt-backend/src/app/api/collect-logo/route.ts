@@ -1,37 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
+import Web3 from 'web3';
 import 'dotenv/config';
-
-const CHAIN_CONFIG = {
-  sepolia: {
-    chainId: 11155111,
-    name: "sepolia",
-    rpc: "https://eth-sepolia.g.alchemy.com/v2/fl94lXT-IxAhUmbp5fOua",
-    contractAddress: process.env.SEPOLIA_CONTRACT_ADDRESS!,
-  },
-  arbitrumSepolia: {
-    chainId: 421614,
-    name: "arbitrumsepolia",
-    rpc: "https://sepolia-rollup.arbitrum.io/rpc",
-    contractAddress: process.env.ARBITRUM_SEPOLIA_CONTRACT_ADDRESS!,
-  },
-};
-
-function getSigner(rpc: string) {
-  // Use server-side provider without network detection
-  const provider = new ethers.providers.JsonRpcProvider(rpc);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-  return wallet;
-}
-
-// Alternative approach for server-side
-function createProvider(rpc: string) {
-  return new ethers.providers.JsonRpcProvider(rpc);
-}
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== Collect Logo API Called ===');
+    console.log('=== Collect Logo API Called (Web3.js) ===');
     
     const body = await request.json();
     const { userWallet, chain = 'sepolia' } = body;
@@ -44,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!ethers.utils.isAddress(userWallet)) {
+    if (!Web3.utils.isAddress(userWallet)) {
       return NextResponse.json(
         { error: 'Invalid wallet address provided' },
         { status: 400 }
@@ -61,75 +34,110 @@ export async function POST(request: NextRequest) {
     try {
       console.log('Setting up blockchain connection...');
       
-      // Get chain configuration
-      const cfg = CHAIN_CONFIG[chain as keyof typeof CHAIN_CONFIG];
-      const remoteChain = chain === 'sepolia' ? 'arbitrumSepolia' : 'sepolia';
-      const remoteCfg = CHAIN_CONFIG[remoteChain as keyof typeof CHAIN_CONFIG];
+      // Get configuration based on chain
+      const rpcUrl = chain === 'sepolia' 
+        ? process.env.SEPOLIA_RPC_URL! 
+        : process.env.ARBITRUM_SEPOLIA_RPC_URL!;
+      
+      const contractAddress = chain === 'sepolia'
+        ? process.env.SEPOLIA_CONTRACT_ADDRESS!
+        : process.env.ARBITRUM_SEPOLIA_CONTRACT_ADDRESS!;
+      
+      const destinationChainId = chain === 'sepolia' ? 421614 : 11155111;
       
       console.log(`🎯 Finding logo on ${chain.toUpperCase()}`);
-      console.log(`📍 Contract: ${cfg.name}:${cfg.contractAddress}`);
-      console.log(`🌉 Destination: ${remoteCfg.name} (${remoteCfg.chainId})`);
+      console.log(`📍 Contract: ${contractAddress}`);
+      console.log(`🌉 Destination chain ID: ${destinationChainId}`);
 
-      // Create provider and wallet for server-side
-      console.log('Creating provider with RPC:', cfg.rpc);
-      const provider = createProvider(cfg.rpc);
-      console.log('Provider created successfully');
-      
-      console.log('Creating wallet...');
-      const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-      console.log('Wallet created successfully');
-      
-      console.log('Creating contract with address:', cfg.contractAddress);
-      const logoHuntGame = new ethers.Contract(
-        cfg.contractAddress,
-        [
-          "function findLogo(uint32 _destinationDomain, address _userWallet) external payable",
-          "function quoteDispatch(uint32 _destinationDomain, bytes calldata _message) external view returns (uint256)",
-          "function logosFound() external view returns (uint256)",
-          "function personalCollection(address _user) external view returns (uint256)"
-        ],
-        wallet
-      );
-      console.log('Contract created successfully');
+      // Create Web3 instance
+      console.log('Creating Web3 instance...');
+      const web3 = new Web3(rpcUrl);
+      console.log('Web3 instance created');
+
+      // Create account from private key
+      console.log('Creating account...');
+      const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY!);
+      web3.eth.accounts.wallet.add(account);
+      console.log('Account created');
+
+      // Contract ABI
+      const contractABI = [
+        {
+          "inputs": [
+            {"internalType": "uint32", "name": "_destinationDomain", "type": "uint32"},
+            {"internalType": "address", "name": "_userWallet", "type": "address"}
+          ],
+          "name": "findLogo",
+          "outputs": [],
+          "stateMutability": "payable" as const,
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {"internalType": "uint32", "name": "_destinationDomain", "type": "uint32"},
+            {"internalType": "bytes", "name": "_message", "type": "bytes"}
+          ],
+          "name": "quoteDispatch",
+          "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+          "stateMutability": "view" as const,
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "logosFound",
+          "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+          "stateMutability": "view" as const,
+          "type": "function"
+        },
+        {
+          "inputs": [{"internalType": "address", "name": "_user", "type": "address"}],
+          "name": "personalCollection",
+          "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+          "stateMutability": "view" as const,
+          "type": "function"
+        }
+      ];
+
+      // Create contract instance
+      console.log('Creating contract instance...');
+      const contract = new web3.eth.Contract(contractABI as any, contractAddress);
+      console.log('Contract instance created');
 
       // Check current logo count before finding
-      const logosFoundBefore = await logoHuntGame.logosFound();
-      console.log(`📊 Current logos found on ${cfg.name}: ${logosFoundBefore}`);
+      console.log('Getting current counts...');
+      const logosFoundBefore = await contract.methods.logosFound().call() as string;
+      console.log(`📊 Current logos found: ${logosFoundBefore}`);
 
       // Check current personal collection
-      const personalCollection = await logoHuntGame.personalCollection(userWallet);
-      console.log(`👤 Personal collection on ${cfg.name}: ${personalCollection} logos`);
+      const personalCollection = await contract.methods.personalCollection(userWallet).call() as string;
+      console.log(`👤 Personal collection: ${personalCollection} logos`);
 
       // Prepare discovery data for quoteDispatch
-      const discoveryData = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint256", "uint256"],
-        [userWallet, logosFoundBefore.add(1), personalCollection.add(1)]
+      const discoveryData = web3.eth.abi.encodeParameters(
+        ['address', 'uint256', 'uint256'],
+        [userWallet, BigInt(logosFoundBefore) + BigInt(1), BigInt(personalCollection) + BigInt(1)]
       );
 
       console.log(`🔍 Discovery data: ${discoveryData}`);
       console.log(`👤 User address: ${userWallet}`);
-      console.log(`🎯 Expected new total count: ${logosFoundBefore.add(1)}`);
-      console.log(`🎯 Expected new personal count: ${personalCollection.add(1)}`);
 
       // Get quote for dispatching the discovery
-      let quote;
-      try {
-        quote = await logoHuntGame.quoteDispatch(remoteCfg.chainId, discoveryData);
-        console.log(`💰 Quote for dispatching logo discovery: ${ethers.utils.formatEther(quote)} ETH`);
-      } catch (error) {
-        console.error('❌ Error getting quote:', error);
-        throw error;
-      }
+      console.log('Getting quote...');
+      const quote = await contract.methods.quoteDispatch(destinationChainId, discoveryData).call() as string;
+      console.log(`💰 Quote: ${web3.utils.fromWei(quote, 'ether')} ETH`);
 
       // Find the logo with the quoted amount of Ether
-      console.log(`🚀 Calling findLogo() on ${chain}...`);
-      const tx = await logoHuntGame.findLogo(remoteCfg.chainId, userWallet, { value: quote });
-      await tx.wait();
-      console.log(`✅ findLogo transaction confirmed on ${cfg.name}`);
+      console.log(`🚀 Calling findLogo()...`);
+      const tx = await contract.methods.findLogo(destinationChainId, userWallet).send({
+        from: account.address,
+        value: quote,
+        gas: '500000'
+      });
+      console.log(`✅ Transaction confirmed: ${tx.transactionHash}`);
 
       // Check the updated logo count
-      const logosFoundAfter = await logoHuntGame.logosFound();
-      console.log(`📈 Updated logos found on ${cfg.name}: ${logosFoundAfter}`);
+      const logosFoundAfter = await contract.methods.logosFound().call() as string;
+      console.log(`📈 Updated logos found: ${logosFoundAfter}`);
 
       const result = {
         success: true,
@@ -137,9 +145,9 @@ export async function POST(request: NextRequest) {
         chain,
         message: 'Logo collection successful',
         totalLogos: logosFoundAfter.toString(),
-        personalCollection: personalCollection.add(1).toString(),
-        quote: ethers.utils.formatEther(quote),
-        transactionHash: tx.hash
+        personalCollection: (BigInt(personalCollection) + BigInt(1)).toString(),
+        quote: web3.utils.fromWei(quote, 'ether'),
+        transactionHash: tx.transactionHash
       };
 
       console.log('Success:', result);

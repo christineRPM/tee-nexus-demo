@@ -31,7 +31,6 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "hardhat.config.ts"
+    "node_modules"
   ]
 }
