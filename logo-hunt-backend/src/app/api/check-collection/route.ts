@@ -40,7 +40,19 @@ export async function POST(request: NextRequest) {
 
     // Parse the output to extract user's collection
     const lines = stdout.split('\n');
-    const result: any = {
+    const result: {
+      success: boolean;
+      userWallet: string;
+      collection: {
+        sepolia: number;
+        arbitrumSepolia: number;
+        total: number;
+      };
+      globalStats: {
+        sepolia: { total: number; participants: number };
+        arbitrumSepolia: { total: number; participants: number };
+      };
+    } = {
       success: true,
       userWallet,
       collection: {

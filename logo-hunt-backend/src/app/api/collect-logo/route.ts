@@ -49,7 +49,16 @@ export async function POST(request: NextRequest) {
 
     // Parse the output to extract key information
     const lines = stdout.split('\n');
-    const result: any = {
+    const result: {
+      success: boolean;
+      userWallet: string;
+      chain: string;
+      message: string;
+      details: string[];
+      totalLogos?: string;
+      personalCollection?: string;
+      quote?: string;
+    } = {
       success: true,
       userWallet,
       chain,

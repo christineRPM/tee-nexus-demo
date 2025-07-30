@@ -6,7 +6,26 @@ export default function Home() {
   const [userWallet, setUserWallet] = useState('');
   const [chain, setChain] = useState('sepolia');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{
+    success?: boolean;
+    error?: string;
+    details?: string;
+    userWallet?: string;
+    chain?: string;
+    message?: string;
+    totalLogos?: string;
+    personalCollection?: string;
+    quote?: string;
+    collection?: {
+      sepolia: number;
+      arbitrumSepolia: number;
+      total: number;
+    };
+    globalStats?: {
+      sepolia: { total: number; participants: number };
+      arbitrumSepolia: { total: number; participants: number };
+    };
+  } | null>(null);
 
   const collectLogo = async () => {
     if (!userWallet) return;
@@ -22,9 +41,9 @@ export default function Home() {
       });
       
       const data = await response.json();
-      setResult(data);
+      setResult(data as typeof result);
     } catch (error) {
-      setResult({ error: 'Failed to collect logo', details: error });
+      setResult({ error: 'Failed to collect logo', details: error as string });
     } finally {
       setLoading(false);
     }
@@ -44,9 +63,9 @@ export default function Home() {
       });
       
       const data = await response.json();
-      setResult(data);
+      setResult(data as typeof result);
     } catch (error) {
-      setResult({ error: 'Failed to check collection', details: error });
+      setResult({ error: 'Failed to check collection', details: error as string });
     } finally {
       setLoading(false);
     }
@@ -135,7 +154,7 @@ export default function Home() {
             
             <div>
               <h3 className="font-semibold text-blue-600">POST /api/check-collection</h3>
-              <p className="text-gray-600">Check a user's logo collection</p>
+              <p className="text-gray-600">Check a user&apos;s logo collection</p>
               <code className="text-sm bg-gray-100 p-2 rounded block mt-2">
                 {`{
   "userWallet": "0x1234567890abcdef..."
