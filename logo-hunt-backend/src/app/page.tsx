@@ -75,11 +75,11 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          🎮 Logo Hunt Backend
+          ⚔️ Chomper Hunt Backend
         </h1>
         
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-2xl font-semibold mb-4">Unity Integration Test</h2>
+          <h2 className="text-2xl font-semibold mb-4">Chomper Hunt Integration Test</h2>
           
           <div className="space-y-4">
             <div>
@@ -115,7 +115,7 @@ export default function Home() {
                 disabled={loading || !userWallet}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Collecting...' : '🎯 Collect Logo'}
+                {loading ? 'Defeating...' : '⚔️ Defeat Chomper'}
               </button>
               
               <button
@@ -123,7 +123,7 @@ export default function Home() {
                 disabled={loading || !userWallet}
                 className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Checking...' : '📊 Check Collection'}
+                {loading ? 'Checking...' : '📊 Check Victories'}
               </button>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function Home() {
           <div className="space-y-4">
             <div>
               <h3 className="font-semibold text-green-600">POST /api/collect-logo</h3>
-              <p className="text-gray-600">Collect a logo for a user wallet</p>
+              <p className="text-gray-600">Defeat a chomper for a user wallet</p>
               <code className="text-sm bg-gray-100 p-2 rounded block mt-2">
                 {`{
   "userWallet": "0x1234567890abcdef...",
@@ -154,7 +154,7 @@ export default function Home() {
             
             <div>
               <h3 className="font-semibold text-blue-600">POST /api/check-collection</h3>
-              <p className="text-gray-600">Check a user&apos;s logo collection</p>
+              <p className="text-gray-600">Check a user&apos;s victory count</p>
               <code className="text-sm bg-gray-100 p-2 rounded block mt-2">
                 {`{
   "userWallet": "0x1234567890abcdef..."
