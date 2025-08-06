@@ -36,25 +36,24 @@ export default function StatsBoard() {
     setError(null);
     
     try {
-      const response = await fetch('/api/global-stats');
-      const data = await response.json();
+      const [globalResponse, leaderboardResponse] = await Promise.all([
+        fetch('/api/global-stats'),
+        fetch('/api/leaderboard')
+      ]);
       
-      if (data.success) {
+      const globalData = await globalResponse.json();
+      const leaderboardData = await leaderboardResponse.json();
+      
+      if (globalData.success && leaderboardData.success) {
         setStats({
-          globalStats: data.globalStats,
-          topPlayers: [
-            { wallet: '0x1234...5678', total: 15, sepolia: 8, arbitrumSepolia: 7 },
-            { wallet: '0x8765...4321', total: 12, sepolia: 6, arbitrumSepolia: 6 },
-            { wallet: '0x9876...5432', total: 10, sepolia: 5, arbitrumSepolia: 5 },
-            { wallet: '0x5432...9876', total: 8, sepolia: 4, arbitrumSepolia: 4 },
-            { wallet: '0x1111...2222', total: 6, sepolia: 3, arbitrumSepolia: 3 },
-          ]
+          globalStats: globalData.globalStats,
+          topPlayers: leaderboardData.topPlayers
         });
       } else {
-        setError('Failed to fetch global stats');
+        setError('Failed to fetch stats');
       }
     } catch (error) {
-      setError('Failed to fetch global stats');
+      setError('Failed to fetch stats');
     } finally {
       setLoading(false);
     }
@@ -282,41 +281,53 @@ export default function StatsBoard() {
         {/* Leaderboard */}
         {stats?.topPlayers && (
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">🏆 Top Hunters</h2>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Rank</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Hunter</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Total</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Sepolia</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Arbitrum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.topPlayers.map((player, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center">
-                          {index === 0 && <span className="text-2xl mr-2">🥇</span>}
-                          {index === 1 && <span className="text-2xl mr-2">🥈</span>}
-                          {index === 2 && <span className="text-2xl mr-2">🥉</span>}
-                          {index > 2 && <span className="text-lg font-bold text-gray-400 mr-2">#{index + 1}</span>}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-medium text-gray-900">{player.wallet}</td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="font-bold text-lg text-blue-600">{player.total}</span>
-                      </td>
-                      <td className="py-4 px-4 text-center text-purple-600">{player.sepolia}</td>
-                      <td className="py-4 px-4 text-center text-orange-600">{player.arbitrumSepolia}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800">🏆 Top Hunters</h2>
+              <div className="text-sm text-gray-500">
+                {stats.topPlayers.length} active hunters
+              </div>
             </div>
+            
+            {stats.topPlayers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Rank</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Hunter</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Total Victories</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Sepolia</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Arbitrum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topPlayers.map((player, index) => (
+                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center">
+                            {index === 0 && <span className="text-2xl mr-2">🥇</span>}
+                            {index === 1 && <span className="text-2xl mr-2">🥈</span>}
+                            {index === 2 && <span className="text-2xl mr-2">🥉</span>}
+                            {index > 2 && <span className="text-lg font-bold text-gray-400 mr-2">#{index + 1}</span>}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 font-medium text-gray-900 font-mono">{player.wallet}</td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="font-bold text-lg text-blue-600">{player.total}</span>
+                        </td>
+                        <td className="py-4 px-4 text-center text-purple-600">{player.sepolia}</td>
+                        <td className="py-4 px-4 text-center text-orange-600">{player.arbitrumSepolia}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 text-lg mb-2">No hunters yet</div>
+                <div className="text-gray-500 text-sm">Be the first to defeat some chompers!</div>
+              </div>
+            )}
           </div>
         )}
 

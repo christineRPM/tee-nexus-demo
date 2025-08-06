@@ -1,6 +1,6 @@
 {
-  "name": "nexus-logo-hunt-game",
-  "description": "Cross-chain logo discovery game built on Nexus powered cross-chain messaging",
+  "name": "nexus-chomper-hunt-game",
+  "description": "Cross-chain chomper discovery game built on Nexus powered cross-chain messaging",
   "keywords": ["blockchain", "cross-chain", "nexus", "hyperlane", "ethereum", "arbitrum", "game"],
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",

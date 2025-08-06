@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Logo Hunt Backend",
-  description: "Cross-chain logo collection game backend API",
+  title: "Chomper Hunt Backend",
+  description: "Cross-chain chomper collection game backend API",
 };
 
 export default function RootLayout({

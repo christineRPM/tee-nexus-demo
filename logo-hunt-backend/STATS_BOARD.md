@@ -15,10 +15,11 @@ A comprehensive statistics dashboard for the Chomper Hunt game that displays glo
 - **Network Breakdown**: Separate counts for each network
 - **Progress Tracking**: Visual representation of victory progress
 
-### 🏅 Leaderboard
-- **Top Hunters**: Ranking of players by total victories
+### 🏅 Real-Time Leaderboard
+- **Top Hunters**: Live ranking of players by total victories
 - **Network Performance**: Breakdown by network
 - **Competitive Element**: Encourages friendly competition
+- **Real Data**: Fetches actual player data from blockchain events
 
 ## API Endpoints
 
@@ -41,6 +42,25 @@ Returns global game statistics without requiring a user wallet.
   },
   "totalChompersDefeated": 270,
   "totalParticipants": 25
+}
+```
+
+### GET /api/leaderboard
+Returns real-time leaderboard data by fetching player addresses from blockchain events.
+
+**Response:**
+```json
+{
+  "success": true,
+  "topPlayers": [
+    {
+      "wallet": "0x1234...5678",
+      "total": 15,
+      "sepolia": 8,
+      "arbitrumSepolia": 7
+    }
+  ],
+  "totalPlayers": 25
 }
 ```
 
